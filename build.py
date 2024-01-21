@@ -35,7 +35,7 @@ def main(args):
  
     if args.test:
         try:
-            runcmd(f"ctest --output-on-failure", cwd=BUILD_PATH)
+            runcmd(f"valgrind --leak-check=full ctest --output-on-failure", cwd=BUILD_PATH)
         except Exception as error:
             raise Exception("Test failed") from error
 
