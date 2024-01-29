@@ -2,11 +2,9 @@
 #include "mylib.h"
 
 #define ASSERT(c, a) \
+    if (!(c))        \
     {                \
-        if (!(c))    \
-        {            \
-            a        \
-        }            \
+        a            \
     }
 
 int main(int argc, char **argv)
