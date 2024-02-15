@@ -2,6 +2,8 @@
 # Universal Mock (UMock) for CMake based tests
 # Borja García <debuti@gmail.com>
 
+cmake_minimum_required(VERSION 3.16)
+
 function(_umock_search_mocks_in_tester)
     set(flags)
     set(singleargs FILE OUT)
@@ -326,6 +328,6 @@ function(umock_this)
         endwhile()
     endforeach()
 
-    target_include_directories(${ARG_TESTER} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/umock/include)
+    target_include_directories(${ARG_TESTER} PRIVATE ${UMOCK_INC})
 
 endfunction()
