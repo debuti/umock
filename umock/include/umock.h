@@ -1,16 +1,16 @@
 #ifndef _umock_h_
 #define _umock_h_
 
-#define FAKENAME(fn, name) fn##name
+#define MOCKNAME(fn, name) fn##name
 
-#define USEFAKE(fn, name) fn##_impl = FAKENAME(fn, name)
+#define MOCKUSE(fn, name) fn##_impl = MOCKNAME(fn, name)
 
-#define FAKE(ret, fn, name, param) \
+#define MOCK(ret, fn, name, param) \
     extern ret(*fn##_impl) param;  \
     ret fn##name param;            \
     ret fn##name param
 
-#define FAKEBODY(name, testsignature, callargs)              \
+#define MOCKBODY(name, testsignature, callargs)              \
     name##_fn name##_impl = NULL;                            \
     testsignature;                                           \
     testsignature                                            \
