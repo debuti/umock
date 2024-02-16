@@ -4,7 +4,7 @@ Universal Mock (UMock) for CMake based tests. UMock is compiler and test framewo
 
 ## License
 
-UMock © 2024 by Borja Garcia <debuti@gmail.com> is licensed under CC BY-SA 4.0 
+UMock © 2024 by Borja Garcia is licensed under CC BY-SA 4.0 
 
 ## Usage
 
@@ -46,4 +46,4 @@ Finally, let UMock detect the needed mocks (CMakeLists.txt)
 umock_this(SUT $(SYSTEM_UNDER_TEST_CMAKE_TARGET) TESTER $(TESTER_CMAKE_TARGET))
 ```
 
-See [umock-examples](https://github.com/debuti/umock-examples) for more usage scenarios.
+See [debuti/umock-examples](https://github.com/debuti/umock-examples) for more usage scenarios.
