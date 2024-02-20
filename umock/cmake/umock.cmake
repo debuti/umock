@@ -4,6 +4,12 @@
 
 cmake_minimum_required(VERSION 3.16)
 
+function(_umock_msg msg)
+    if(UMOCK_VERBOSE)
+        message("${msg}")
+    endif()
+endfunction()
+
 function(_umock_search_mocks_in_tester)
     set(flags)
     set(singleargs FILE OUT)
@@ -16,7 +22,7 @@ function(_umock_search_mocks_in_tester)
         message(FATAL_ERROR "You must provide an output variable")
     endif()
 
-    message("Searching for mocks in ${ARG_FILE}")
+    _umock_msg("Searching for mocks in ${ARG_FILE}")
     file(READ ${ARG_FILE} testf_data)
     set(SEARCHMOCK "MOCK[ \t\r\n]*\\\([ \t\r\n]*([^,]*)[ \t\r\n]*,[ \t\r\n]*([^,]*)[ \t\r\n]*,[ \t\r\n]*([^,]*)[ \t\r\n]*,[ \t\r\n]*(\\\([^\\\)]*\\\))[ \t\r\n]*\\\)")
     string(REGEX MATCHALL ${SEARCHMOCK} matches ${testf_data}) 
@@ -105,13 +111,13 @@ function(_umock_search_mocks_in_sut)
         message(FATAL_ERROR "You must provide an output variable")
     endif()
 
-    message("Searching for ${ARG_FN} in ${ARG_FILE}")
+    _umock_msg("Searching for ${ARG_FN} in ${ARG_FILE}")
     _umock_contains_fn(FILE ${ARG_FILE}
                        FN ${ARG_FN}
                        OUT is_found)
     # If found in this file, get this file includes
     if (is_found)
-        message(" ${ARG_FN} usage found.")
+        _umock_msg(" ${ARG_FN} usage found.")
         _umock_extract_includes(FILE ${ARG_FILE}
                                 OUT includes
         )
@@ -157,18 +163,18 @@ function(_umock_traverse_incpaths)
           continue()
         endif()
         list(APPEND used ${inc})
-        message("  Include ${inc}")
+        _umock_msg("  Include ${inc}")
         foreach(incpath ${ARG_INCPATHS})
             if(EXISTS ${incpath}/${inc} AND NOT IS_DIRECTORY ${incpath}/${inc})
-                message("   Living in ${incpath}/${inc}")
+                _umock_msg("   Living in ${incpath}/${inc}")
                 _umock_contains_fn(FILE ${incpath}/${inc}
                                    FN ${ARG_FN}
                                    OUT is_found)
                 if(is_found)
-                    message("    ${ARG_FN} found in ${incpath}/${inc}")
+                    _umock_msg("    ${ARG_FN} found in ${incpath}/${inc}")
                     list(APPEND out ${incpath} ${inc})
                 else()
-                    message("    Not found, searching in inherited includes")
+                    _umock_msg("    Not found, searching in inherited includes")
                     _umock_extract_includes(FILE ${incpath}/${inc}
                                             OUT new_incs)
                     list(PREPEND incs ${new_incs})
@@ -211,7 +217,7 @@ function(_umock_get_default_incpaths)
     endif()
 endfunction()
 
-set(_THIS_MODULE_BASE_DIR "${CMAKE_CURRENT_LIST_DIR}")
+set(UMOCK_BASE_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE INTERNAL "" FORCE)
 
 function(umock_this)
     set(flags)
@@ -226,7 +232,7 @@ function(umock_this)
     endif()
     
     _umock_get_default_incpaths()
-    SET(UMOCK_INC ${_THIS_MODULE_BASE_DIR}/../include)
+    SET(UMOCK_INC ${UMOCK_BASE_DIR}/../include)
     SET(UMOCK_TMP ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${ARG_TESTER}.dir/gen)
     get_target_property(${ARG_SUT}_src      ${ARG_SUT} SOURCES)
     get_target_property(${ARG_SUT}_pub_hdr  ${ARG_SUT} PUBLIC_HEADER)
@@ -254,7 +260,7 @@ function(umock_this)
 
         while(mocks)
             list(POP_FRONT mocks mock_rc mock_fn mock_args)
-            message("Mock: ${mock_rc} ${mock_fn}${mock_args}")
+            _umock_msg("Mock: ${mock_rc} ${mock_fn}${mock_args}")
 
             # Search for the includes of the SUT sources that consume that mock
             foreach(sutf ${${ARG_SUT}_src})
@@ -264,7 +270,7 @@ function(umock_this)
                                            ARGS ${mock_args}
                                            OUT includes)
                 # mock found in sut source, relevant includes to inject into
-                message(" Includes: ${includes}")
+                _umock_msg(" Includes: ${includes}")
 
                 # Traverse include folders to locate each include file that contains the fn to mock
                 _umock_traverse_incpaths(
@@ -275,7 +281,7 @@ function(umock_this)
                     INCPATHS ${${ARG_SUT}_incpaths}
                     OUT selected
                 )
-                message(" Includes where the mock fn should be placed: ${selected}")
+                _umock_msg(" Includes where the mock fn should be placed: ${selected}")
                 
                 set(dpath ${UMOCK_TMP}/${sutf})
                 if(NOT EXISTS ${dpath})
@@ -307,7 +313,7 @@ function(umock_this)
 
                 while(selected)
                     list(POP_FRONT selected incpath inc)
-                    message("File to tune: ${incpath}//${inc} -> ${dpath}/${inc}")
+                    _umock_msg("File to tune: ${incpath}//${inc} -> ${dpath}/${inc}")
                     get_filename_component(dpath_parent ${dpath}/${inc} DIRECTORY)
                     if(NOT EXISTS ${dpath_parent})
                         file(MAKE_DIRECTORY ${dpath_parent})
@@ -324,7 +330,7 @@ function(umock_this)
                         )
                 endwhile()
             endforeach()
-            message("")
+            _umock_msg("")
         endwhile()
     endforeach()
 
