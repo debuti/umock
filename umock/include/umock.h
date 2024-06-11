@@ -5,10 +5,19 @@
 
 #define MOCKUSE(fn, name) fn##_impl = MOCKNAME(fn, name)
 
+/** Create a new mock
+ *
+ * @param ret The return type for the fn to be mocked
+ * @param fn The name of the fn to be mocked
+ * @param name The variant of the mock. This allows to define
+ * 	several mocks for the same function
+ * @param param The list of parameters of the fn to be mocked
+ *
+ */
 #define MOCK(ret, fn, name, param) \
     extern ret(*fn##_impl) param;  \
-    ret fn##name param;            \
-    ret fn##name param
+    ret MOCKNAME(fn, name) param;  \
+    ret MOCKNAME(fn, name) param
 
 #define MOCKBODY(name, testsignature, callargs)              \
     name##_fn name##_impl = NULL;                            \
