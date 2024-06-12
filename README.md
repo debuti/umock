@@ -16,10 +16,9 @@ include(FetchContent)
 FetchContent_Declare(
     umock
     GIT_REPOSITORY https://github.com/debuti/umock.git
-    GIT_SHALLOW    1
+    GIT_TAG        0.1.0
 )
 FetchContent_MakeAvailable(umock)
-include(${umock_SOURCE_DIR}/umock/cmake/umock.cmake)
 ```
 
 Add some mocks to your tester
