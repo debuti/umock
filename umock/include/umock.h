@@ -5,7 +5,7 @@
 
 #define MOCKUSE(fn, name) fn##_impl = MOCKNAME(fn, name)
 
-/** Create a new mock
+/** Create a new mock variant
  *
  * @param ret The return type for the fn to be mocked
  * @param fn The name of the fn to be mocked
@@ -19,13 +19,13 @@
     ret MOCKNAME(fn, name) param;  \
     ret MOCKNAME(fn, name) param
 
-#define MOCKBODY(name, testsignature, callargs)              \
-    name##_fn name##_impl = NULL;                            \
+#define MOCKENTRY(name, testsignature, callargs)             \
+    name##_fn name##_impl = ((void *)0);                     \
     testsignature;                                           \
     testsignature                                            \
     {                                                        \
         name##_fn impl = (name##_impl ? name##_impl : name); \
-        name##_impl = NULL;                                  \
+        name##_impl = ((void *)0);                           \
         return impl callargs;                                \
     }
 
