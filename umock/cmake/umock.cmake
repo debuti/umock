@@ -220,14 +220,14 @@ function(_umock_add_mockbody_file)
 endfunction()
 
 
-#! _umock_append_mocksupport_file : creates the mock support file and appends stuff to it
+#! _umock_append_to_mocksupport_file : creates the mock support file and appends stuff to it
 #
 # \param:RC The return value of the mock
 # \param:FN The fn name of the mock
 # \param:ARGS The args of the mock 
 # \group:TARGET Full path to the target
 #
-function(_umock_append_mocksupport_file)
+function(_umock_append_to_mocksupport_file)
     set(flags)
     set(singleargs RC FN ARGS INC TARGET)
     cmake_parse_arguments(ARG "${flags}" "${singleargs}" "${multiargs}" ${ARGN})
@@ -268,17 +268,22 @@ set(UMOCK_BASE_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE INTERNAL "" FORCE)
 
 #! umock_this : mock all the defined functions in the tester
 #
-# \param:SUT The system under test CMake target to mock
+# \param:SUTS The systems under test CMake targets to mock
 # \param:TESTER The tester CMake target to read the mock targets from
 #
 function(umock_this)
     set(flags)
-    set(singleargs SUT TESTER)
-    set(multiargs)
+    set(singleargs TESTER)
+    set(multiargs SUTS)
     cmake_parse_arguments(ARG "${flags}" "${singleargs}" "${multiargs}" ${ARGN})
-    if((NOT ARG_SUT) OR (NOT (TARGET ${ARG_SUT})))
+    if(NOT ARG_SUTS)
         message(FATAL_ERROR "You must provide a valid system under test target")
     endif()
+    foreach(ARG_SUT ${ARG_SUTS})
+        if((NOT ARG_SUT) OR (NOT (TARGET ${ARG_SUT})))
+            message(FATAL_ERROR "You must provide a valid system under test target: ${ARG_SUT}")
+        endif()
+    endforeach()
     if((NOT ARG_TESTER) OR (NOT (TARGET ${ARG_TESTER})))
         message(FATAL_ERROR "You must provide a valid tester target")
     endif()
@@ -295,33 +300,21 @@ function(umock_this)
         _umock_trace("  - ${defp}")
     endforeach()
 
-    get_target_property(${ARG_SUT}_src ${ARG_SUT} SOURCES)
-    _umock_trace("SUT sources:")
-    foreach(sutf ${${ARG_SUT}_src})
-        _umock_trace("  - ${sutf}")
-    endforeach()
-
-    get_target_property(${ARG_SUT}_includes ${ARG_SUT} INCLUDE_DIRECTORIES)
-    set(${ARG_SUT}_incpaths ${${ARG_SUT}_includes} ${DEFAULT_INCLUDES})
-    _umock_trace("SUT include paths:")
-    foreach(sutf ${${ARG_SUT}_includes})
-        _umock_trace("  - ${sutf}")
-    endforeach()
-
-    get_target_property(${ARG_TESTER}_src      ${ARG_TESTER} SOURCES)
+    get_target_property(${ARG_TESTER}_src ${ARG_TESTER} SOURCES)
     _umock_trace("Tester sources:")
     foreach(testf ${${ARG_TESTER}_src})
         _umock_trace("  - ${testf}")
     endforeach()
- 
+
     # Search for the fns to mock
     foreach(testf ${${ARG_TESTER}_src})
         _umock_search_mocks_in_tester(FILE ${testf} 
-                                      OUT mocks)
+            OUT mocks
+        )
 
         while(mocks)
             list(POP_FRONT mocks mock_rc mock_fn mock_args)
-            _umock_info(" Mock: ${mock_rc} ${mock_fn}${mock_args} found in ${testf}")
+            _umock_info(" FTBM: ${mock_rc} ${mock_fn}${mock_args} found in ${testf}")
 
             _umock_add_mockbody_file(
                 RC ${mock_rc} 
@@ -329,86 +322,114 @@ function(umock_this)
                 ARGS ${mock_args}
                 TARGET ${UMOCK_TMP}/common/umock.${mock_fn}.h
             )
-                
-            # Search each include folder
-            foreach(incpath ${${ARG_SUT}_incpaths})
-                # Try to locate the mocked signature in any of the files
-                _umock_traverse_incpaths(
-                    RC ${mock_rc} 
-                    FN ${mock_fn}
-                    ARGS ${mock_args}
-                    INCPATH ${incpath}
-                    RELPATH ""
-                    OUT includes
-                )
-                if(NOT includes)
-                    # The incpath was not containing the ftbm in any of its headers
-                    continue()
-                endif()
 
-                _umock_info(" Includes where the mock fn should be placed: ${incpath}/ ${includes}")
+            # Search in each SUT target
+            foreach(ARG_SUT ${ARG_SUTS})
+                get_target_property(${ARG_SUT}_src ${ARG_SUT} SOURCES)
+                _umock_trace("SUT sources:")
+                foreach(sutf ${${ARG_SUT}_src})
+                    _umock_trace("  - ${sutf}")
+                endforeach()
 
-                set(dpath ${UMOCK_TMP}/${incpath})
-
-                # For each file that contains the ftbm signature
-                foreach(include ${includes})
-                    # Check if file exists, otherwise copy it into the ephimeral folder
-                    if(NOT EXISTS ${dpath}/${include})
-                        get_filename_component(include_parent ${dpath}/${include} DIRECTORY)
-                        file(MAKE_DIRECTORY ${include_parent})
-                        file(COPY ${incpath}/${include}
-                            DESTINATION ${include_parent}
-                        )
-                    endif()
-
-                    file(READ ${dpath}/${include} fdata)
-                    set(SEARCHINC "umock.${mock_fn}.h")
-                    string(REGEX MATCHALL ${SEARCHINC} matches ${fdata}) 
-                    if (matches)
-                        _umock_info(" File was already patched")
-                        continue()
-                    endif()
-
-                    # Open the file and append the card trick
-                    file(APPEND ${dpath}/${include}
-                        "\n"
-                        "/* umock hook */\n"
-                        "#include \"umock.${mock_fn}.h\""
-                    )
-
-                    _umock_append_mocksupport_file(
+                get_target_property(${ARG_SUT}_includes ${ARG_SUT} INCLUDE_DIRECTORIES)
+                set(${ARG_SUT}_incpaths ${${ARG_SUT}_includes} ${DEFAULT_INCLUDES})
+                _umock_trace("SUT include paths:")
+                foreach(sutf ${${ARG_SUT}_includes})
+                    _umock_trace("  - ${sutf}")
+                endforeach()
+                   
+                # Search each include folder
+                foreach(incpath ${${ARG_SUT}_incpaths})
+                    # Try to locate the mocked signature in any of the files
+                    _umock_traverse_incpaths(
                         RC ${mock_rc} 
                         FN ${mock_fn}
                         ARGS ${mock_args}
-                        INC ${include}
-                        TARGET ${UMOCK_TMP}/common/umock_support.c
+                        INCPATH ${incpath}
+                        RELPATH ""
+                        OUT includes
                     )
-                endforeach()
-            endforeach()
-            _umock_trace("")
-        endwhile()
-    endforeach()
+                    if(NOT includes)
+                        # The incpath was not containing the ftbm in any of its headers
+                        continue()
+                    endif()
+
+                    _umock_info(" Includes where the mock fn should be placed: ${incpath}/ ${includes}")
+
+                    set(dpath ${UMOCK_TMP}/${ARG_SUT}/${incpath})
+
+                    # For each file that contains the ftbm signature
+                    foreach(include ${includes})
+                        # Check if file exists, otherwise copy it into the ephimeral folder
+                        if(NOT EXISTS ${dpath}/${include})
+                            get_filename_component(include_parent ${dpath}/${include} DIRECTORY)
+                            file(MAKE_DIRECTORY ${include_parent})
+                            file(COPY ${incpath}/${include}
+                                DESTINATION ${include_parent}
+                            )
+                        endif()
+
+                        file(READ ${dpath}/${include} fdata)
+                        set(SEARCHINC "umock.${mock_fn}.h")
+                        string(REGEX MATCHALL ${SEARCHINC} matches ${fdata}) 
+                        if (matches)
+                            _umock_info(" File was already patched")
+                            continue()
+                        endif()
+
+                        # Open the file and append the card trick
+                        file(APPEND ${dpath}/${include}
+                            "\n"
+                            "/* umock hook */\n"
+                            "#include \"umock.${mock_fn}.h\""
+                        )
+
+                        _umock_append_to_mocksupport_file(
+                            RC ${mock_rc} 
+                            FN ${mock_fn}
+                            ARGS ${mock_args}
+                            INC ${include}
+                            TARGET ${UMOCK_TMP}/common/umock_support.c
+                        )
+                    endforeach(include ${includes})
+                endforeach(incpath ${${ARG_SUT}_incpaths})
+                _umock_trace("")
+            endforeach(ARG_SUT ${ARG_SUTS})
+        endwhile(mocks)
+    endforeach(testf ${${ARG_TESTER}_src})
+
+
+    foreach(ARG_SUT ${ARG_SUTS})
+        get_target_property(${ARG_SUT}_includes ${ARG_SUT} INCLUDE_DIRECTORIES)
+        set(${ARG_SUT}_incpaths ${${ARG_SUT}_includes} ${DEFAULT_INCLUDES})
+        _umock_trace("SUT include paths:")
+        foreach(sutf ${${ARG_SUT}_includes})
+            _umock_trace("  - ${sutf}")
+        endforeach()
+
+        # To compile the umock_support.c there is need a for ARG_SUT incpaths 
+        target_include_directories(${ARG_TESTER} AFTER PRIVATE ${${ARG_SUT}_incpaths})
+
+        # Add the umock and common incpaths to SUT incpaths
+        set(new_${ARG_SUT}_incpaths "${UMOCK_INCPATH};${UMOCK_TMP}/common")
+
+        # Add the cardtricks to SUT incpaths
+        foreach(incpath ${${ARG_SUT}_incpaths})
+            if(EXISTS ${UMOCK_TMP}/${ARG_SUT}/${incpath})
+                list(APPEND new_${ARG_SUT}_incpaths ${UMOCK_TMP}/${ARG_SUT}/${incpath})
+            endif()
+            list(APPEND new_${ARG_SUT}_incpaths ${incpath})
+        endforeach()
+
+        target_include_directories(${ARG_SUT} BEFORE PRIVATE ${new_${ARG_SUT}_incpaths})
+
+
+    endforeach(ARG_SUT ${ARG_SUTS})
 
     # Append a new source to the tester sources
     target_sources(${ARG_TESTER} PRIVATE ${UMOCK_TMP}/common/umock_support.c)
 
-    # To compile the umock_support.c there is need a for ARG_SUT incpaths 
-    target_include_directories(${ARG_TESTER} BEFORE PRIVATE ${${ARG_SUT}_incpaths})
-
-    # Add the umock and common incpaths to SUT incpaths
-    set(new_${ARG_SUT}_incpaths "${UMOCK_INCPATH};${UMOCK_TMP}/common")
-
-    # Add the cardtricks to SUT incpaths
-    foreach(incpath ${${ARG_SUT}_incpaths})
-        if(EXISTS ${UMOCK_TMP}/${incpath})
-            list(APPEND new_${ARG_SUT}_incpaths ${UMOCK_TMP}/${incpath})
-        endif()
-        list(APPEND new_${ARG_SUT}_incpaths ${incpath})
-    endforeach()
-
-    target_include_directories(${ARG_SUT} BEFORE PRIVATE ${new_${ARG_SUT}_incpaths})
-
-
     # Add umock incpath to tester
     target_include_directories(${ARG_TESTER} BEFORE PRIVATE ${UMOCK_INCPATH})
+
 endfunction()
