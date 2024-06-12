@@ -252,8 +252,8 @@ function(_umock_append_mocksupport_file)
     endwhile()
     list(JOIN mock_argnames "," mock_argnames)
     file(APPEND ${ARG_TARGET} 
-        "#ifndef _umock_${ARG_FN}_h_\n"
-        "#define _umock_${ARG_FN}_h_\n"
+        "#ifndef _umock_${ARG_FN}_c_\n"
+        "#define _umock_${ARG_FN}_c_\n"
         "#include \"${ARG_INC}\"\n"
         "#include \"umock.h\"\n"
         "typedef ${ARG_RC}(*${ARG_FN}_fn)${ARG_ARGS};\n"
@@ -389,6 +389,12 @@ function(umock_this)
         endwhile()
     endforeach()
 
+    # Append a new source to the tester sources
+    target_sources(${ARG_TESTER} PRIVATE ${UMOCK_TMP}/common/umock_support.c)
+
+    # To compile the umock_support.c there is need a for ARG_SUT incpaths 
+    target_include_directories(${ARG_TESTER} BEFORE PRIVATE ${${ARG_SUT}_incpaths})
+
     # Add the umock and common incpaths to SUT incpaths
     set(new_${ARG_SUT}_incpaths "${UMOCK_INCPATH};${UMOCK_TMP}/common")
 
@@ -402,8 +408,6 @@ function(umock_this)
 
     target_include_directories(${ARG_SUT} BEFORE PRIVATE ${new_${ARG_SUT}_incpaths})
 
-    # Append a new source
-    target_sources(${ARG_SUT} PRIVATE ${UMOCK_TMP}/common/umock_support.c)
 
     # Add umock incpath to tester
     target_include_directories(${ARG_TESTER} BEFORE PRIVATE ${UMOCK_INCPATH})
