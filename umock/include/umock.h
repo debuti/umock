@@ -10,12 +10,13 @@
  * @param name The variant of the mock
  *
  */
-#define MOCKUSEONCE(fn, name)                            \
-    do {                                                 \
-        fn##_idx = 0;                                    \
-        fn##_size = 2;                                   \
-        fn##_impl = (fn##_fn*) calloc(2, sizeof(void*)); \
-        fn##_impl[0] = MOCKNAME(fn, name);               \
+#define MOCKUSEONCE(fn, name)                  \
+    do                                         \
+    {                                          \
+        fn##_idx = 0;                          \
+        fn##_size = 2;                         \
+        fn##_impl[0] = MOCKNAME(fn, name);     \
+        fn##_impl[1] = ((fn##_fn)((void *)0)); \
     } while (0)
 
 /** Setup the environment to use
@@ -24,11 +25,12 @@
  * @param n The number of expected invocations
  *
  */
-#define MOCKSETMANY(fn, n)                               \
-    do {                                                 \
-        fn##_idx = 0;                                    \
-        fn##_size = n;                                   \
-        fn##_impl = (fn##_fn*) calloc(n, sizeof(void*)); \
+#define MOCKSETMANY(fn, n)                                 \
+    do                                                     \
+    {                                                      \
+        fn##_idx = 0;                                      \
+        fn##_size = n + 1;                                 \
+        fn##_impl[fn##_size - 1] = ((fn##_fn)((void *)0)); \
     } while (0)
 
 /** Setup the environment to use
@@ -38,7 +40,8 @@
  *
  */
 #define MOCKSETIDX(fn, name, i)            \
-    do {                                   \
+    do                                     \
+    {                                      \
         fn##_impl[i] = MOCKNAME(fn, name); \
     } while (0)
 
@@ -48,12 +51,12 @@
  * @param name The variant of the mock
  *
  */
-#define MOCKUSEALWAYS(fn, name)                          \
-    do {                                                 \
-        fn##_idx = 0;                                    \
-        fn##_size = 1;                                   \
-        fn##_impl = (fn##_fn*) calloc(1, sizeof(void*)); \
-        fn##_impl[0] = MOCKNAME(fn, name);               \
+#define MOCKUSEALWAYS(fn, name)            \
+    do                                     \
+    {                                      \
+        fn##_idx = 0;                      \
+        fn##_size = 1;                     \
+        fn##_impl[0] = MOCKNAME(fn, name); \
     } while (0)
 
 /** Create a new mock variant
@@ -66,25 +69,24 @@
  *
  */
 #define MOCK(ret, fn, name, param) \
-    typedef ret(*fn##_fn)param;    \
+    typedef ret(*fn##_fn) param;   \
     extern unsigned int fn##_idx;  \
     extern unsigned int fn##_size; \
-    extern fn##_fn * fn##_impl;    \
+    extern fn##_fn fn##_impl[];    \
     ret MOCKNAME(fn, name) param;  \
     ret MOCKNAME(fn, name) param
 
-
-#define MOCKENTRY(name, testsignature, callargs)                                                            \
-    name##_fn * name##_impl = ((void *)0);                                                                  \
-    unsigned int name##_idx = 0;                                                                            \
-    unsigned int name##_size = 0;                                                                           \
-    testsignature;                                                                                          \
-    testsignature                                                                                           \
-    {                                                                                                       \
-        name##_fn impl = (name##_impl ? (name##_impl[name##_idx] ? name##_impl[name##_idx] : name) : name); \
-        if ((name##_idx + 1) < name##_size)                                                                 \
-            name##_idx++;                                                                                   \
-        return impl callargs;                                                                               \
+#define MOCKENTRY(name, testsignature, callargs)                                     \
+    name##_fn name##_impl[UMOCK_MOCK_MAGAZINE_MAX] = {((void *)0)};                  \
+    unsigned int name##_idx = 0;                                                     \
+    unsigned int name##_size = 0;                                                    \
+    testsignature;                                                                   \
+    testsignature                                                                    \
+    {                                                                                \
+        name##_fn impl = (name##_impl[name##_idx] ? name##_impl[name##_idx] : name); \
+        if ((name##_idx + 1) < name##_size)                                          \
+            name##_idx++;                                                            \
+        return impl callargs;                                                        \
     }
 
 #endif

@@ -288,6 +288,10 @@ function(umock_this)
         message(FATAL_ERROR "You must provide a valid tester target")
     endif()
     
+    if(NOT DEFINED UMOCK_MOCK_MAGAZINE_MAX)
+        set(UMOCK_MOCK_MAGAZINE_MAX 32)
+    endif()
+
     # Reference to umock static include
     set(UMOCK_INCPATH ${UMOCK_BASE_DIR}/../include)
 
@@ -402,10 +406,6 @@ function(umock_this)
     foreach(ARG_SUT ${ARG_SUTS})
         get_target_property(${ARG_SUT}_includes ${ARG_SUT} INCLUDE_DIRECTORIES)
         set(${ARG_SUT}_incpaths ${${ARG_SUT}_includes} ${DEFAULT_INCLUDES})
-        _umock_trace("SUT include paths:")
-        foreach(sutf ${${ARG_SUT}_includes})
-            _umock_trace("  - ${sutf}")
-        endforeach()
 
         # To compile the umock_support.c there is need a for ARG_SUT incpaths 
         target_include_directories(${ARG_TESTER} AFTER PRIVATE ${${ARG_SUT}_incpaths})
@@ -422,9 +422,10 @@ function(umock_this)
         endforeach()
 
         target_include_directories(${ARG_SUT} BEFORE PRIVATE ${new_${ARG_SUT}_incpaths})
-
-
     endforeach(ARG_SUT ${ARG_SUTS})
+
+    # Set the length of the mock magazine
+    set_property(SOURCE ${UMOCK_TMP}/common/umock_support.c APPEND PROPERTY COMPILE_DEFINITIONS "UMOCK_MOCK_MAGAZINE_MAX=${UMOCK_MOCK_MAGAZINE_MAX}")
 
     # Append a new source to the tester sources
     target_sources(${ARG_TESTER} PRIVATE ${UMOCK_TMP}/common/umock_support.c)
