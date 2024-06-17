@@ -310,6 +310,8 @@ function(umock_this)
         _umock_trace("  - ${testf}")
     endforeach()
 
+    set(PREVIOUS_MOCKS "")
+
     # Search for the fns to mock
     foreach(testf ${${ARG_TESTER}_src})
         _umock_search_mocks_in_tester(FILE ${testf} 
@@ -318,6 +320,13 @@ function(umock_this)
 
         while(mocks)
             list(POP_FRONT mocks mock_rc mock_fn mock_args)
+
+            # Check if the mock has already been processed
+            if (${mock_fn} IN_LIST PREVIOUS_MOCKS)
+                continue()
+            endif()
+            list(APPEND PREVIOUS_MOCKS ${mock_fn})
+
             _umock_info(" FTBM: ${mock_rc} ${mock_fn}${mock_args} found in ${testf}")
 
             _umock_add_mockbody_file(
@@ -425,7 +434,7 @@ function(umock_this)
     endforeach(ARG_SUT ${ARG_SUTS})
 
     # Set the length of the mock magazine
-    set_property(SOURCE ${UMOCK_TMP}/common/umock_support.c APPEND PROPERTY COMPILE_DEFINITIONS "UMOCK_MOCK_MAGAZINE_MAX=${UMOCK_MOCK_MAGAZINE_MAX}")
+    target_compile_definitions(${ARG_TESTER} PRIVATE "UMOCK_MOCK_MAGAZINE_MAX=${UMOCK_MOCK_MAGAZINE_MAX}")
 
     # Append a new source to the tester sources
     target_sources(${ARG_TESTER} PRIVATE ${UMOCK_TMP}/common/umock_support.c)

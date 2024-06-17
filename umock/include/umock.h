@@ -1,7 +1,7 @@
 #ifndef _umock_h_
 #define _umock_h_
 
-#define MOCKNAME(fn, name) fn##name
+#define MOCKNAME(fn, name) fn##_##name
 
 /** Use a mock variant only once. Other calls will be directed
  * to th mocked fn directly
@@ -21,16 +21,24 @@
 
 /** Setup the environment to use
  *
+ * This code will assert at runtime if the requested
+ * invocations are within configured bounds.
+ *
  * @param fn The name of the fn to be mocked
  * @param n The number of expected invocations
  *
  */
-#define MOCKSETMANY(fn, n)                                 \
-    do                                                     \
-    {                                                      \
-        fn##_idx = 0;                                      \
-        fn##_size = n + 1;                                 \
-        fn##_impl[fn##_size - 1] = ((fn##_fn)((void *)0)); \
+#define MOCKSETMANY(fn, n)                             \
+    do                                                 \
+    {                                                  \
+        unsigned int __idx;                            \
+        if (n >= UMOCK_MOCK_MAGAZINE_MAX)              \
+            for (;;)                                   \
+                ;                                      \
+        fn##_idx = 0;                                  \
+        fn##_size = n + 1;                             \
+        for (__idx = 0; __idx < fn##_size; __idx += 1) \
+            fn##_impl[__idx] = ((fn##_fn)((void *)0)); \
     } while (0)
 
 /** Setup the environment to use
