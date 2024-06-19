@@ -417,7 +417,7 @@ function(umock_this)
         set(${ARG_SUT}_incpaths ${${ARG_SUT}_includes} ${DEFAULT_INCLUDES})
 
         # To compile the umock_support.c there is need a for ARG_SUT incpaths 
-        target_include_directories(${ARG_TESTER} AFTER PRIVATE ${${ARG_SUT}_incpaths})
+        target_include_directories(${ARG_TESTER} PRIVATE ${${ARG_SUT}_incpaths})
 
         # Add the umock and common incpaths to SUT incpaths
         set(new_${ARG_SUT}_incpaths "${UMOCK_INCPATH};${UMOCK_TMP}/common")
