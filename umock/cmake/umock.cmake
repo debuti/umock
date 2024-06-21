@@ -88,9 +88,7 @@ function(_umock_get_default_incpaths)
         message(FATAL_ERROR "Compiler unknown to umock")
     endif()
     string(REPLACE " " ";" CMAKE_C_FLAGS_AS_LIST "${CMAKE_C_FLAGS}")
-    if (CMAKE_C_COMPILER_ID STREQUAL "Clang") # Clang
-        message(FATAL_ERROR "Clang not implemented yet")
-    elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU") # GCC, QCC
+    if (CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_C_COMPILER_ID STREQUAL "GNU") # Clang, GCC, QCC
         get_filename_component(CMAKE_C_COMPILER_NAME ${CMAKE_C_COMPILER} NAME)
         if (CMAKE_C_COMPILER_NAME STREQUAL "qcc")
             execute_process(COMMAND ${CMAKE_C_COMPILER} ${CMAKE_C_FLAGS_AS_LIST} -vvv
@@ -122,14 +120,14 @@ function(_umock_get_default_incpaths)
                 endforeach()
                 set(DEFAULT_INCLUDES ${INCS} PARENT_SCOPE)
             else()
-                message(FATAL_ERROR "Error in QCC default includes parsing")
+                message(FATAL_ERROR "Error in default includes parsing")
             endif()
         else()
             execute_process(COMMAND ${CMAKE_C_COMPILER} -xc -E -v /dev/null
                     OUTPUT_QUIET
                     ERROR_VARIABLE gccinfo)
 
-            set(SEARCHINCS "#include .* starts here:.*End of search list.")
+            set(SEARCHINCS "starts here:.*End of search list.")            
             string(REGEX MATCHALL ${SEARCHINCS} match ${gccinfo}) 
             if (match)
                 set(SEARCHINC "\n ([^\n]+)")
@@ -139,6 +137,8 @@ function(_umock_get_default_incpaths)
                     list(APPEND INCS ${CMAKE_MATCH_1})
                 endforeach()
                 set(DEFAULT_INCLUDES ${INCS} PARENT_SCOPE)
+            else()
+                message(FATAL_ERROR "Error in default includes parsing")
             endif()
         endif()
     elseif (CMAKE_C_COMPILER_ID STREQUAL "Intel") # Intel C++
